@@ -19,29 +19,55 @@ const createCourse = asyncHandler(async (req, res) => {
 });
 
 const getCourses = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, sort = "asc" } = req.query;
-  const cacheKey = `courses:${page}:${limit}:${sort}`;
+  try {
+    const { page = 1, limit = 10, sort = "asc" } = req.query;
 
-  const cachedCourses = await redisClient.get(cacheKey);
-  if (cachedCourses) {
+    const options = {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      sort: { title: sort === "asc" ? 1 : -1 },
+      populate: "teacher",
+    };
+
+    const aggregate = courseModel.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          localField: "teacher",
+          foreignField: "_id",
+          as: "teacher",
+        },
+      },
+      { $unwind: "$teacher" },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          "teacher.name": 1,
+          "teacher._id": 1,
+          studentsCount: { $size: "$students" },
+          assignmentsCount: { $size: "$assignments" },
+        },
+      },
+    ]);
+
+    const courses = await courseModel.aggregatePaginate(aggregate, options);
+
+    if (!courses || courses.docs.length === 0) {
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(200, { docs: [], totalDocs: 0 }, "No courses found")
+        );
+    }
+
     return res
       .status(200)
-      .json(new ApiResponse(200, JSON.parse(cachedCourses), "Courses fetched successfully from cache"));
+      .json(new ApiResponse(200, courses, "Courses fetched successfully"));
+  } catch (error) {
+    console.error("Error in getCourses:", error);
+    throw new ApiError(500, "Failed to fetch courses", error);
   }
-
-  const options = {
-    page: parseInt(page, 10),
-    limit: parseInt(limit, 10),
-    sort: { title: sort === "asc" ? 1 : -1 },
-  };
-
-  const courses = await courseModel.aggregatePaginate({}, options);
-
-  await redisClient.set(cacheKey, JSON.stringify(courses), { EX: 60 * 10 }); // Cache for 10 minutes
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, courses, "Courses fetched successfully"));
 });
 
 const getCourseById = asyncHandler(async (req, res) => {

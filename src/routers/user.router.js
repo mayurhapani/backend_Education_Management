@@ -7,6 +7,7 @@ import {
   logout,
   getUser,
   getUsers,
+  getTeachers,
 } from "../controllers/user.controller.js";
 import { isAuth } from "../middlewares/isAuth.middleware.js";
 import { authorize } from "../middlewares/rbac.middleware.js";
@@ -26,6 +27,8 @@ userRouter.post("/login", login);
 userRouter.get("/logout", isAuth, logout);
 
 userRouter.get("/getUser", isAuth, getUser);
-userRouter.get("/getUsers", isAuth, authorize("admin"), getUsers);
+userRouter.get("/getUsers", isAuth, authorize("admin", "teacher"), getUsers);
+
+userRouter.get("/getTeachers", isAuth, getTeachers);
 
 export { userRouter };

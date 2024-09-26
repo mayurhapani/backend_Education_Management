@@ -165,23 +165,44 @@ const getUsers = asyncHandler(async (req, res) => {
   if (cachedUsers) {
     return res
       .status(200)
-      .json(new ApiResponse(200, JSON.parse(cachedUsers), "Users fetched successfully from cache"));
+      .json(
+        new ApiResponse(
+          200,
+          JSON.parse(cachedUsers),
+          "Users fetched successfully from cache"
+        )
+      );
   }
 
   const options = {
     page: parseInt(page, 10),
     limit: parseInt(limit, 10),
     sort: { name: sort === "asc" ? 1 : -1 },
+    select: "-password",
   };
 
   const query = role ? { role } : {};
-  const users = await userModel.aggregatePaginate(query, options);
 
-  await redisClient.set(cacheKey, JSON.stringify(users), { EX: 60 * 10 }); // Cache for 10 minutes
+  try {
+    const users = await userModel.paginate(query, options);
+
+    await redisClient.set(cacheKey, JSON.stringify(users), { EX: 60 * 10 }); // Cache for 10 minutes
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, users, "Users fetched successfully"));
+  } catch (error) {
+    console.error("Error in getUsers:", error);
+    throw new ApiError(500, "Failed to fetch users", error);
+  }
+});
+
+const getTeachers = asyncHandler(async (req, res) => {
+  const teachers = await userModel.find({ role: "teacher" }).select("_id name");
 
   return res
     .status(200)
-    .json(new ApiResponse(200, users, "Users fetched successfully"));
+    .json(new ApiResponse(200, teachers, "Teachers fetched successfully"));
 });
 
 export {
@@ -193,4 +214,5 @@ export {
   deleteUser,
   updateFcmToken,
   getUsers,
+  getTeachers,
 };
