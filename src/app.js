@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { userRouter } from "./routers/user.router.js";
+import { courseRouter } from "./routers/course.router.js";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/courses", courseRouter);
 
 app.use((err, req, res, next) => {
   console.error("Error details:", err);
