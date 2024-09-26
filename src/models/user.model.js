@@ -1,5 +1,4 @@
 import mongoose, { Schema } from "mongoose";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
 const userSchema = new Schema(
@@ -21,12 +20,8 @@ const userSchema = new Schema(
     },
     role: {
       type: String,
-      default: "user",
-      enum: ["user", "admin"],
-    },
-    fcmToken: {
-      type: String,
-      default: "",
+      required: true,
+      enum: ["admin", "teacher", "student"],
     },
   },
   { timestamps: true }
