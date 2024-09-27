@@ -117,4 +117,46 @@ const deleteCourse = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, course, "Course deleted successfully"));
 });
 
-export { createCourse, getCourses, getCourseById, updateCourse, deleteCourse };
+const getEnrolledCourses = asyncHandler(async (req, res) => {
+  const studentId = req.user._id;
+  const courses = await courseModel.find({ students: studentId });
+
+  // Calculate progress for each course (this is a simplified version, you may want to adjust based on your specific requirements)
+  const coursesWithProgress = await Promise.all(
+    courses.map(async (course) => {
+      const totalAssignments = await Assignment.countDocuments({
+        course: course._id,
+      });
+      const submittedAssignments = await Submission.countDocuments({
+        assignment: {
+          $in: await Assignment.find({ course: course._id }).distinct("_id"),
+        },
+        student: studentId,
+      });
+      const progress =
+        totalAssignments > 0
+          ? (submittedAssignments / totalAssignments) * 100
+          : 0;
+      return { ...course.toObject(), progress };
+    })
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        coursesWithProgress,
+        "Enrolled courses fetched successfully"
+      )
+    );
+});
+
+export {
+  createCourse,
+  getCourses,
+  getCourseById,
+  updateCourse,
+  deleteCourse,
+  getEnrolledCourses,
+};

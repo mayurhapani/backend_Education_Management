@@ -45,9 +45,15 @@ const deleteUser = asyncHandler(async (req, res) => {
   const { _id } = req.params;
 
   const user = await userModel.findOne({ _id });
-  if (!user) throw new ApiError(402, "User not found");
+  if (!user) throw new ApiError(404, "User not found");
 
   const deletedUser = await userModel.findOneAndDelete({ _id });
+
+  // Clear the user from Redis cache
+  const cacheKeys = await redisClient.keys(`users:*`);
+  if (cacheKeys.length > 0) {
+    await redisClient.del(cacheKeys);
+  }
 
   return res
     .status(200)
@@ -58,18 +64,26 @@ const updateUser = asyncHandler(async (req, res) => {
   const { name, email } = req.body;
   const { _id } = req.params;
 
-  const user = await userModel.findByIdAndUpdate(_id, {
-    name,
-    email,
-  });
-
+  const user = await userModel.findById(_id);
   if (!user) {
-    throw new ApiError(402, "User not found");
-  } else {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, user, "User updated successfully"));
+    throw new ApiError(404, "User not found");
   }
+
+  // Update user fields
+  user.name = name || user.name;
+  user.email = email || user.email;
+
+  const updatedUser = await user.save();
+
+  // Clear the user from Redis cache
+  const cacheKeys = await redisClient.keys(`users:*`);
+  if (cacheKeys.length > 0) {
+    await redisClient.del(cacheKeys);
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, "User updated successfully"));
 });
 
 const login = asyncHandler(async (req, res) => {

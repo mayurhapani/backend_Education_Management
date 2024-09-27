@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { userRouter } from "./routers/user.router.js";
 import { courseRouter } from "./routers/course.router.js";
+import { assignmentRouter } from "./routers/assignment.router.js";
+import { gradeRouter } from "./routers/grades.router.js";
 
 const app = express();
 
@@ -25,6 +27,8 @@ app.get("/", (req, res) => {
 
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/courses", courseRouter);
+app.use("/api/v1/assignments", assignmentRouter);
+app.use("/api/v1/grades", gradeRouter);
 
 app.use((err, req, res, next) => {
   console.error("Error details:", err);
