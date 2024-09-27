@@ -3,6 +3,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import redisClient from "../config/redis.js";
+import { Assignment, Submission } from "../models/assignment.model.js";
 
 const createCourse = asyncHandler(async (req, res) => {
   const { title, description, teacher } = req.body;
@@ -119,7 +120,9 @@ const deleteCourse = asyncHandler(async (req, res) => {
 
 const getEnrolledCourses = asyncHandler(async (req, res) => {
   const studentId = req.user._id;
-  const courses = await courseModel.find({ students: studentId });
+  const courses = await courseModel
+    .find({ students: studentId })
+    .populate("teacher");
 
   // Calculate progress for each course (this is a simplified version, you may want to adjust based on your specific requirements)
   const coursesWithProgress = await Promise.all(
@@ -133,6 +136,7 @@ const getEnrolledCourses = asyncHandler(async (req, res) => {
         },
         student: studentId,
       });
+
       const progress =
         totalAssignments > 0
           ? (submittedAssignments / totalAssignments) * 100
@@ -146,6 +150,7 @@ const getEnrolledCourses = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
+        courses,
         coursesWithProgress,
         "Enrolled courses fetched successfully"
       )
