@@ -160,7 +160,7 @@ const enrollStudents = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Student IDs must be provided as an array");
   }
 
-  const course = await courseModel.findById(courseId);
+  const course = await courseModel.findById(courseId).populate("students");
   if (!course) {
     throw new ApiError(404, "Course not found");
   }
@@ -176,8 +176,28 @@ const enrollStudents = asyncHandler(async (req, res) => {
     );
   }
 
+  // Find already enrolled students
+  const alreadyEnrolledStudents = course.students.filter((student) =>
+    studentIds.includes(student._id.toString())
+  );
+
+  if (alreadyEnrolledStudents.length > 0) {
+    const alreadyEnrolledNames = alreadyEnrolledStudents
+      .map((student) => student.name)
+      .join(", ");
+    throw new ApiError(
+      400,
+      `The following students are already enrolled: ${alreadyEnrolledNames}`
+    );
+  }
+
   // Add students to the course
-  course.students = [...new Set([...course.students, ...studentIds])];
+  course.students = [
+    ...new Set([
+      ...course.students.map((student) => student._id.toString()),
+      ...studentIds,
+    ]),
+  ];
   await course.save();
 
   return res
