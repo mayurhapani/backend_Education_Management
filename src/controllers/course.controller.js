@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import redisClient from "../config/redis.js";
 import { Assignment, Submission } from "../models/assignment.model.js";
+import { Grade } from "../models/grade.model.js";
 
 const createCourse = asyncHandler(async (req, res) => {
   const { title, description, teacher } = req.body;
@@ -124,7 +125,7 @@ const getEnrolledCourses = asyncHandler(async (req, res) => {
     .find({ students: studentId })
     .populate("teacher");
 
-  // Calculate progress for each course (this is a simplified version, you may want to adjust based on your specific requirements)
+  // Calculate progress for each course
   const coursesWithProgress = await Promise.all(
     courses.map(async (course) => {
       const totalAssignments = await Assignment.countDocuments({
@@ -137,10 +138,28 @@ const getEnrolledCourses = asyncHandler(async (req, res) => {
         student: studentId,
       });
 
-      const progress =
+      // Calculate progress based on assignments
+      let progress =
         totalAssignments > 0
           ? (submittedAssignments / totalAssignments) * 100
           : 0;
+
+      // Optionally factor in grades
+      const totalGrades = await Grade.countDocuments({
+        course: course._id,
+        student: studentId,
+      });
+      const maxGrade = course.maxGrade || 100;
+      const gradeProgress =
+        totalGrades > 0 ? (totalGrades / maxGrade) * 100 : 0;
+
+      // Combine assignment progress and grade progress
+      progress = (progress + gradeProgress) / 2;
+
+      // Update the course progress
+      course.progress = progress;
+      await course.save();
+
       return { ...course.toObject(), progress };
     })
   );
@@ -150,7 +169,6 @@ const getEnrolledCourses = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        courses,
         coursesWithProgress,
         "Enrolled courses fetched successfully"
       )

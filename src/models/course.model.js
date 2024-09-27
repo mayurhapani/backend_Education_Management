@@ -29,6 +29,14 @@ const courseSchema = new Schema(
         dueDate: Date,
       },
     ],
+    progress: {
+      type: Number,
+      default: 0,
+    },
+    maxGrade: {
+      type: Number,
+      default: 100,
+    },
   },
   { timestamps: true }
 );
