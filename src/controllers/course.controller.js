@@ -152,6 +152,65 @@ const getEnrolledCourses = asyncHandler(async (req, res) => {
     );
 });
 
+const enrollStudents = asyncHandler(async (req, res) => {
+  const { courseId } = req.params;
+  const { studentIds } = req.body;
+
+  if (!studentIds || !Array.isArray(studentIds)) {
+    throw new ApiError(400, "Student IDs must be provided as an array");
+  }
+
+  const course = await courseModel.findById(courseId);
+  if (!course) {
+    throw new ApiError(404, "Course not found");
+  }
+
+  // Check if the user is the teacher of the course or an admin
+  if (
+    req.user.role !== "admin" &&
+    course.teacher.toString() !== req.user._id.toString()
+  ) {
+    throw new ApiError(
+      403,
+      "You are not authorized to enroll students in this course"
+    );
+  }
+
+  // Add students to the course
+  course.students = [...new Set([...course.students, ...studentIds])];
+  await course.save();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, course, "Students enrolled successfully"));
+});
+
+const getCoursesByTeacher = asyncHandler(async (req, res) => {
+  const teacherId = req.user._id;
+
+  const courses = await courseModel
+    .find({ teacher: teacherId })
+    .populate("teacher");
+
+  if (!courses || courses.length === 0) {
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, { docs: [], totalDocs: 0 }, "No courses found")
+      );
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { docs: courses, totalDocs: courses.length },
+        "Courses fetched successfully"
+      )
+    );
+});
+
 export {
   createCourse,
   getCourses,
@@ -159,4 +218,6 @@ export {
   updateCourse,
   deleteCourse,
   getEnrolledCourses,
+  enrollStudents,
+  getCoursesByTeacher, // Add this line
 };
