@@ -118,9 +118,13 @@ const submitAssignment = asyncHandler(async (req, res) => {
 
 const getSubmittedAssignments = asyncHandler(async (req, res) => {
   const studentId = req.user._id;
-  const submissions = await Submission.find({ student: studentId }).populate(
-    "assignment"
-  );
+  const submissions = await Submission.find({ student: studentId }).populate({
+    path: "assignment",
+    populate: {
+      path: "course",
+    },
+  });
+
   return res
     .status(200)
     .json(

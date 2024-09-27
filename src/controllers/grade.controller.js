@@ -44,7 +44,6 @@ const getGrades = asyncHandler(async (req, res) => {
     grades = await Grade.paginate({ student: req.user._id }, options);
   }
 
-  console.log("grades", grades);
   return res
     .status(200)
     .json(new ApiResponse(200, grades, "Grades fetched successfully"));
